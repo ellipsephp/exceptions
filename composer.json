@@ -1,0 +1,38 @@
+{
+    "name": "ellipse/exceptions",
+    "type": "library",
+    "description": "Psr-15 middleware for exception handling",
+    "keywords": [
+        "psr-15",
+        "psr-7",
+        "middleware",
+        "exception"
+    ],
+    "license": "MIT",
+    "homepage": "https://github.com/ellipsephp/exceptions",
+    "support": {
+        "issues": "https://github.com/ellipsephp/exceptions/issues",
+        "source": "https://github.com/ellipsephp/exceptions"
+    },
+    "authors": [
+        {
+            "name": "pmall",
+            "email": "pierre.mallinjoud@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "psr/http-message": "^1.0",
+        "psr/http-server-handler": "^1.0",
+        "psr/http-server-middleware": "^1.0"
+    },
+    "require-dev": {
+        "kahlan/kahlan": "^4.0",
+        "eloquent/phony-kahlan": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ellipse\\Exceptions\\": "src"
+        }
+    }
+}
