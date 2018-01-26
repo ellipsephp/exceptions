@@ -9,8 +9,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-use Ellipse\Http\Exceptions\Response\RequestBasedResponseFactory;
-
 class ExceptionHandlerMiddleware implements MiddlewareInterface
 {
     /**
@@ -42,9 +40,8 @@ class ExceptionHandlerMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Handle the request with the given handler and execute the callable when
-     * it fails. Update the response when the exception or a previous one is a
-     * TerminableException.
+     * Handle the request with the given handler and produce a response with the
+     * callable when an exception is thrown.
      *
      * @param \Psr\Http\Message\ServerRequestInterface $request
      * @param \Psr\Http\Server\RequestHandlerInterface $handler
@@ -60,48 +57,14 @@ class ExceptionHandlerMiddleware implements MiddlewareInterface
 
         catch (Throwable $e) {
 
-            $inner = $e instanceof TerminableException ? $e->inner() : $e;
+            if ($e instanceof $this->class) {
 
-            if ($inner instanceof $this->class) {
-
-                $response = ($this->callable)($request, $inner);
-
-                return $this->terminate($response, $e);
+                return ($this->callable)($request, $e);
 
             }
 
             throw $e;
 
         }
-    }
-
-    /**
-     * Return the given response updated with the given exception when it is a
-     * TerminableException. Recurse over the previous exceptions.
-     *
-     * Can be useful for example to attach session cookie to the response even
-     * when the script fails.
-     *
-     * @param \Psr\Http\Message\ResponseInterface   $response
-     * @param \Throwable                            $e
-     * @return \Psr\Http\Message\ResponseInterface
-     */
-    private function terminate(ResponseInterface $response, Throwable $e): ResponseInterface
-    {
-        if ($e instanceof TerminableException) {
-
-            $response = $e->terminate($response);
-
-        }
-
-        $previous = $e->getPrevious();
-
-        if (is_null($previous)) {
-
-            return $response;
-
-        }
-
-        return $this->terminate($response, $previous);
     }
 }
