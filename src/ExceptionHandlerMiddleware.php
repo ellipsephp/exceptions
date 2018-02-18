@@ -9,6 +9,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+use Ellipse\Exceptions\Exceptions\ExceptionRequestHandlerTypeException;
+
 class ExceptionHandlerMiddleware implements MiddlewareInterface
 {
     /**
@@ -19,33 +21,34 @@ class ExceptionHandlerMiddleware implements MiddlewareInterface
     public $class;
 
     /**
-     * The callable to execute when an exception is caught. Takes the request
-     * and the exception as parameter and should return a Psr-7 response.
+     * The factory producing a request handler from the caught exception.
      *
      * @var callable
      */
-    public $callable;
+    public $factory;
 
     /**
      * Set up an exception handler widdleware with the given exception class
-     * name and callable.
+     * name and request handler factory.
      *
      * @param string    $class
-     * @param callable  $callable
+     * @param callable  $factory
      */
-    public function __construct(string $class, callable $callable)
+    public function __construct(string $class, callable $factory)
     {
         $this->class = $class;
-        $this->callable = $callable;
+        $this->factory = $factory;
     }
 
     /**
-     * Handle the request with the given handler and produce a response with the
-     * callable when an exception is thrown.
+     * Handle the request with the given request handler. When an exception is
+     * caught, handle the request with the request handler produced by the
+     * factory.
      *
      * @param \Psr\Http\Message\ServerRequestInterface $request
      * @param \Psr\Http\Server\RequestHandlerInterface $handler
-     * @param \Psr\Http\Message\ResponseInterface
+     * @return \Psr\Http\Message\ResponseInterface
+     * @throws \Ellipse\Exceptions\Exceptions\ExceptionRequestHandlerTypeException
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -59,7 +62,15 @@ class ExceptionHandlerMiddleware implements MiddlewareInterface
 
             if ($e instanceof $this->class) {
 
-                return ($this->callable)($request, $e);
+                $handler = ($this->factory)($e);
+
+                if ($handler instanceof RequestHandlerInterface) {
+
+                    return $handler->handle($request);
+
+                }
+
+                throw new ExceptionRequestHandlerTypeException($e, $handler);
 
             }
 

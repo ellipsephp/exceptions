@@ -2,7 +2,6 @@
 
 use function Eloquent\Phony\Kahlan\mock;
 use function Eloquent\Phony\Kahlan\stub;
-use function Eloquent\Phony\Kahlan\onStatic;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -10,14 +9,15 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 use Ellipse\Exceptions\ExceptionHandlerMiddleware;
+use Ellipse\Exceptions\Exceptions\ExceptionRequestHandlerTypeException;
 
 describe('ExceptionHandlerMiddleware', function () {
 
     beforeEach(function () {
 
-        $this->callable = stub();
+        $this->factory = stub();
 
-        $this->middleware = new ExceptionHandlerMiddleware(RuntimeException::class, $this->callable);
+        $this->middleware = new ExceptionHandlerMiddleware(RuntimeException::class, $this->factory);
 
     });
 
@@ -73,19 +73,51 @@ describe('ExceptionHandlerMiddleware', function () {
 
         context('when the request handler throws an exception with the specified class name', function () {
 
-            it('should proxy the callable with the caught exception', function () {
+            beforeEach(function () {
 
-                $exception = new RuntimeException;
+                $this->exception = new RuntimeException;
 
-                $response = mock(ResponseInterface::class)->get();
+            });
 
-                $this->handler->handle->with($this->request)->throws($exception);
+            context('when the factory returns an implementation of RequestHandlerInterface', function () {
 
-                $this->callable->with($this->request, $exception)->returns($response);
+                it('should proxy the produced request handler', function () {
 
-                $test = $this->middleware->process($this->request, $this->handler->get());
+                    $handler = mock(RequestHandlerInterface::class);
+                    $response = mock(ResponseInterface::class)->get();
 
-                expect($test)->toBe($response);
+                    $this->handler->handle->with($this->request)->throws($this->exception);
+
+                    $this->factory->with($this->exception)->returns($handler);
+                    $handler->handle->with($this->request)->returns($response);
+
+                    $test = $this->middleware->process($this->request, $this->handler->get());
+
+                    expect($test)->toBe($response);
+
+                });
+
+            });
+
+            context('when the factory does not return an implementation of RequestHandlerInterface', function () {
+
+                it('should throw a ExceptionRequestHandlerTypeException', function () {
+
+                    $this->handler->handle->with($this->request)->throws($this->exception);
+
+                    $this->factory->with($this->exception)->returns('handler');
+
+                    $test = function () {
+
+                        $this->middleware->process($this->request, $this->handler->get());
+
+                    };
+
+                    $exception = new ExceptionRequestHandlerTypeException($this->exception, 'handler');
+
+                    expect($test)->toThrow($exception);
+
+                });
 
             });
 
